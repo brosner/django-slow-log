@@ -39,7 +39,7 @@ def bytes_to_string(bytes):
     factor = 0
     while bytes/(1024.0**(factor+1)) >= 1:
         factor += 1
-    return '%s%0.1f %s' % ('-' if negate else '', bytes/(1024.0**factor), units[factor])
+    return '%s%0.1f %s' % ({True: '-', False: ''}[bool(negate)], bytes/(1024.0**factor), units[factor])
 
 class LoadAverage(object):
     """Fetch the current load average.  Uses /proc/loadavg in linux, falls back
@@ -60,8 +60,11 @@ class LoadAverage(object):
 
     def proc_load(self):
         try:
-            with open('/proc/loadavg') as f:
+            try:
+                f = open('/proc/loadavg')
                 content = f.read()
+            finally:
+                f.close()
             return map(float, content.split()[:3])
         except:
             return self.uptime_fallback_load()
@@ -95,8 +98,11 @@ class MemoryStatus(object):
 
     def proc_usage(self):
         try:
-            with open(self.procpath) as f:
+            try:
+                f = open(self.procpath)
                 content = f.read()
+            finally:
+                f.close()
             size = self.matcher.search(content).groups()[0]
             return to_bytes(size)
         except:
@@ -153,7 +159,7 @@ class SlowLogMiddleware(object):
         end = self._get_stats()
         start = self.start
         path = 'http://' + request.get_host() + request.get_full_path()
-        status_code = response.status_code if response else '500'
+        status_code = {True: response.status_code, False: '500'}[bool(response)]
         time_delta = end['time'] - start['time']
         mem_delta = end['memory'] - start['memory']
         load_delta = end['load'] - start['load']
